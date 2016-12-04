@@ -13,7 +13,7 @@
   "scripts": {
     "clean": "rimraf mixins helpers *.js",
     "build": "npm run clean && babel src --out-dir . --ignore *.test.js",
-    "test": "jest",
+    "test": "jest --coverage",
     "prepublish": "npm test && npm run build",
     "postpublish": "npm run clean"
   },

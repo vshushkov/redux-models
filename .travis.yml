@@ -9,4 +9,4 @@ addons:
   code_climate:
     repo_token: 9cf56d10111da62cb6d83f1eaba44aa444eb65ab6c7f5a076cb5f449d1b46ec2
 after_success:
-  - codeclimate-test-reporter < coverage/lcov.info
+  - codeclimate-test-reporter < lcov.info

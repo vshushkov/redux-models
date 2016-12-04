@@ -232,7 +232,7 @@ describe('Model', () => {
       stateToModel: (state) => state,
       methods: [
         function start(dispatch) {
-          return setInterval(() => dispatch(this.increase()), 5);
+          return setInterval(() => dispatch(this.increase()), 40);
         },
 
         'increase',
@@ -273,7 +273,7 @@ describe('Model', () => {
     state = timer.reducer(state, actions[0]);
     state = timer.reducer(state, actions[1]);
 
-    return new Promise((resolve, reject) => setTimeout(() => resolve(), 20))
+    return new Promise((resolve, reject) => setTimeout(() => resolve(), 130))
       .then(() => {
         const timerId = timer.selectors(state).timerId();
 

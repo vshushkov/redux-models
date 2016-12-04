@@ -5,3 +5,8 @@ node_js:
   - "5"
   - "0.12"
   - "iojs"
+addons:
+  code_climate:
+    repo_token: <token>
+after_success:
+  - codeclimate-test-reporter < coverage/lcov.info

@@ -25,7 +25,7 @@ const mixinWithReducer = {
       return { mixinResult: value };
     }
   }),
-  createReducer: (model) => ({ METHOD_FROM_MIXIN }) => (state = {}, action) => {
+  createReducer: (model, { METHOD_FROM_MIXIN }) => (state = {}, action) => {
     if (action.type === METHOD_FROM_MIXIN) {
       return { result: { ok: true } };
     }
@@ -37,7 +37,7 @@ const mixinWithReducer = {
 const middlewares = [thunk];
 const mockStore = configureMockStore(middlewares);
 
-describe.only('Mixins', () => {
+describe('Mixins', () => {
 
   it('create a model with mixin', () => {
 

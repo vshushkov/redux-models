@@ -259,7 +259,7 @@ describe('Model', () => {
       },
       selectors: {
         timerId() {
-          return this.getModelState().timerId;
+          return this.getModelState().model.timerId;
         }
       }
     });

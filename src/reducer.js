@@ -75,17 +75,17 @@ function createMethodReducer(model, method) {
 export function createReducer(model, combineReducers) {
   const methods = normalizeMethods(model.config().methods || {});
 
-  if (isFunction(model.config().reducer)) {
-    return model.config().reducer(
-      actionTypes(model.config().name, Object.keys(model.actions))
-    );
-  }
-
   const reducers = methods
     .reduce((reducers, method) => ({
       ...reducers,
       [method.name || method]: createMethodReducer(model, method)
     }), {});
+
+  if (isFunction(model.config().reducer)) {
+    reducers.model = model.config().reducer(
+      actionTypes(model.config().name, Object.keys(model.actions))
+    );
+  }
 
   const mixinsReducers = (model.config().mixins || [])
     .reduce((mixinsReducers, mixin) => {
@@ -93,7 +93,7 @@ export function createReducer(model, combineReducers) {
         const types = actionTypes(model.config().name, model._mixinsMethods[mixin.name] || []);
         return {
           ...mixinsReducers,
-          [mixin.name]: mixin.createReducer(model, combineReducers)(types)
+          [mixin.name]: mixin.createReducer(model, types, combineReducers)
         };
       }
 

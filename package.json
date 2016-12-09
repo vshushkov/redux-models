@@ -1,21 +1,17 @@
 {
-  "name": "redux-models",
-  "version": "0.1.1",
+  "name": "redux-models-creator",
+  "version": "0.1.0",
   "description": "Models layer for Redux",
-  "main": "index.js",
+  "main": "build/index.js",
   "files": [
-    "helpers",
-    "mixins",
+    "build",
     "src",
-    "test",
-    "*.js"
+    "test"
   ],
   "scripts": {
-    "clean": "rimraf mixins helpers *.js",
-    "build": "npm run clean && babel src --out-dir . --ignore *.test.js",
+    "build": "rimraf build && babel src --out-dir build",
     "test": "jest --coverage",
-    "prepublish": "npm test && npm run build",
-    "postpublish": "npm run clean"
+    "prepublish": "npm test && npm run build"
   },
   "repository": {
     "type": "git",

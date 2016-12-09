@@ -1,9 +1,6 @@
 .idea
 node_modules
 *.log
-/*.js
-/mixins
-/helpers
-/test/sandbox.specs.js
+/build
 /coverage
 /sandbox

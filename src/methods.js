@@ -14,7 +14,7 @@ export function normalizeMethods(methods) {
     return methods.filter(filter);
   }
 
-  return Object.keys(methods)
+  return Object.keys(methods || {})
     .map((key) => methods[key])
     .filter(filter);
 }

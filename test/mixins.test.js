@@ -243,4 +243,33 @@ describe('Mixins', () => {
       .toEqual({ ok: true });
   });
 
+  it('create a model only with mixin', () => {
+
+    const model = createModel({
+      stateToModel: (state) => state,
+      name: 'model',
+      mixins: [mixinWithReducer]
+    });
+
+    const store = mockStore();
+    const actions = store.getActions();
+    const params = { value: 'bla' };
+
+    store.dispatch(model.methodFromMixin(params));
+
+    expect(actions).toEqual([
+      { type: '@@redux-models/MODEL/METHOD_FROM_MIXIN_START', payload: [params] },
+      { type: '@@redux-models/MODEL/METHOD_FROM_MIXIN_SUCCESS', payload: [params], meta: { mixinResult: 'bla' } }
+    ]);
+
+    let state = {};
+    actions.forEach(action => state = model.reducer(state, action));
+
+    expect(model.selectors(state).methodFromMixin(params))
+      .toEqual({ result: { ok: true } });
+
+    expect(model.selectors(state).methodFromMixinResult(params))
+      .toEqual({ ok: true });
+  });
+
 });

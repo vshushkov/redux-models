@@ -48,7 +48,14 @@ export function createActionCreator(model, method) {
       if (result && result.then && result.catch) {
         return result
           .then((data) => {
-            dispatch(successAction(params, data));
+            try {
+              dispatch(successAction(params, data));
+            } catch (e) {
+              // catch errors from components...
+              console.error(e);
+              throw e;
+            }
+
             return data;
           })
           .catch((error) => {
@@ -60,6 +67,9 @@ export function createActionCreator(model, method) {
       dispatch(successAction(params, result));
       return result;
     } catch (error) {
+      // catch errors from components...
+      console.error(error);
+
       dispatch(failureAction(params, error));
       throw error;
     }

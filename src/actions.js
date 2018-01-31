@@ -39,40 +39,49 @@ export function createActionCreator(model, method) {
   const successAction = createAction(success, (params, result) => params, (params, result) => result);
   const failureAction = createAction(failure, (params, result) => params, (params, error) => error);
 
-  return (...params) => (dispatch) => {
-    dispatch(startAction(...params));
+  return (...params) => {
+    function action(dispatch) {
+      dispatch(startAction(...params));
 
-    try {
-      let result = method.call(model.actions, ...params, dispatch);
+      try {
+        let result = method.call(model.actions, ...params, dispatch);
 
-      if (result && result.then && result.catch) {
-        return result
-          .then((data) => {
-            try {
-              dispatch(successAction(params, data));
-            } catch (e) {
-              // catch errors from components...
-              console.error(e);
-              throw e;
-            }
+        if (result && result.then && result.catch) {
+          return result
+            .then((data) => {
+              try {
+                dispatch(successAction(params, data));
+              } catch (e) {
+                // catch errors from components...
+                console.error(e);
+                throw e;
+              }
 
-            return data;
-          })
-          .catch((error) => {
-            dispatch(failureAction(params, error));
-            throw error;
-          });
+              return data;
+            })
+            .catch((error) => {
+              dispatch(failureAction(params, error));
+              throw error;
+            });
+        }
+
+        dispatch(successAction(params, result));
+        return result;
+      } catch (error) {
+        // catch errors from components...
+        console.error(error);
+
+        dispatch(failureAction(params, error));
+        throw error;
       }
-
-      dispatch(successAction(params, result));
-      return result;
-    } catch (error) {
-      // catch errors from components...
-      console.error(error);
-
-      dispatch(failureAction(params, error));
-      throw error;
     }
+
+    action.asyncAction = true;
+    action.actionName = method.name;
+    action.actionParams = params;
+    action.modelName = model.config().name;
+
+    return action;
   }
 }
 

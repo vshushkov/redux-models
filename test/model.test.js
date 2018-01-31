@@ -33,6 +33,12 @@ describe('Model', () => {
     ];
 
     const store = mockStore();
+    const action = user.login(params);
+
+    expect(action.asyncAction).toEqual(true);
+    expect(action.actionName).toEqual('login');
+    expect(action.actionParams).toEqual([params]);
+    expect(action.modelName).toEqual('user');
 
     return store.dispatch(user.login(params))
       .then((response) => {

@@ -46,7 +46,8 @@
     "redux": "^3.5.2",
     "redux-mock-store": "^1.2.1",
     "redux-thunk": "^2.1.0",
-    "rimraf": "^2.5.4"
+    "rimraf": "^2.5.4",
+    "sinon": "^4.5.0"
   },
   "jest": {
     "coverageReporters": [

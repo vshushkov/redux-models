@@ -1,5 +1,6 @@
 import expect from 'expect';
 import configureMockStore from 'redux-mock-store';
+import sinon from 'sinon';
 import thunk from 'redux-thunk';
 import { createModels } from '../src';
 
@@ -9,6 +10,8 @@ const mockStore = configureMockStore(middlewares);
 describe('Model group', () => {
 
   it('create a model group', () => {
+
+    sinon.stub(Date, 'now').callsFake(() => 1);
 
     const model1spec = {
       name: 'model1',
@@ -56,7 +59,8 @@ describe('Model group', () => {
           params: [{ value: 'sample1' }],
           requested: true,
           requesting: false,
-          result: { result: 'sample1' }
+          result: { result: 'sample1' },
+          updatedAt: 1
         }]
       },
       model2: {
@@ -65,10 +69,13 @@ describe('Model group', () => {
           params: [{ value: 'sample2' }],
           requested: true,
           requesting: false,
-          result: { result: 'sample2' }
+          result: { result: 'sample2' },
+          updatedAt: 1
         }]
       }
     });
+
+    Date.now.restore();
   });
 
 });

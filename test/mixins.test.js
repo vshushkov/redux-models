@@ -1,5 +1,6 @@
 import expect from 'expect';
 import configureMockStore from 'redux-mock-store';
+import omit from 'lodash/omit';
 import thunk from 'redux-thunk';
 import { createModel, createModels } from '../src';
 
@@ -69,7 +70,7 @@ describe('Mixins', () => {
     let state = {};
     actions.forEach(action => state = model.reducer(state, action));
 
-    expect(model.selectors(state).methodToOverride(params))
+    expect(omit(model.selectors(state).methodToOverride(params), 'updatedAt'))
       .toEqual({
         params: [params],
         result: { result: 'bla' },
@@ -78,7 +79,7 @@ describe('Mixins', () => {
         error: null
       });
 
-    expect(model.selectors(state).methodFromMixin(params))
+    expect(omit(model.selectors(state).methodFromMixin(params), 'updatedAt'))
       .toEqual({
         params: [params],
         result: { mixinResult: 'bla' },
@@ -144,7 +145,7 @@ describe('Mixins', () => {
     let state = {};
     actions.forEach(action => state = reducer(state, action));
 
-    expect(model1.selectors(state).methodToOverride(params))
+    expect(omit(model1.selectors(state).methodToOverride(params), 'updatedAt'))
       .toEqual({
         params: [params],
         result: { result: 'bla' },
@@ -153,7 +154,7 @@ describe('Mixins', () => {
         error: null
       });
 
-    expect(model1.selectors(state).methodFromMixin(params))
+    expect(omit(model1.selectors(state).methodFromMixin(params), 'updatedAt'))
       .toEqual({
         params: [params],
         result: { mixinResult: 'bla' },
@@ -168,7 +169,7 @@ describe('Mixins', () => {
     expect(model1.selectors(state).methodFromMixinResult(params))
       .toEqual({ mixinResult: 'bla' });
 
-    expect(model2.selectors(state).methodToOverride(params))
+    expect(omit(model2.selectors(state).methodToOverride(params), 'updatedAt'))
       .toEqual({
         params: [params],
         result: { result: 'bla' },
@@ -177,7 +178,7 @@ describe('Mixins', () => {
         error: null
       });
 
-    expect(model2.selectors(state).methodFromMixin(params))
+    expect(omit(model2.selectors(state).methodFromMixin(params), 'updatedAt'))
       .toEqual({
         params: [params],
         result: { mixinResult: 'bla' },
@@ -224,7 +225,7 @@ describe('Mixins', () => {
     let state = {};
     actions.forEach(action => state = model.reducer(state, action));
 
-    expect(model.selectors(state).methodToOverride(params))
+    expect(omit(model.selectors(state).methodToOverride(params), 'updatedAt'))
       .toEqual({
         params: [params],
         result: { result: 'bla' },

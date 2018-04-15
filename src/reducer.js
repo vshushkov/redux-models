@@ -19,7 +19,8 @@ function createDefaultMethodReducer(model, method) {
     result: null,
     requesting: false,
     requested: false,
-    error: null
+    error: null,
+    updatedAt: null
   };
 
   const initialState = [];
@@ -39,7 +40,7 @@ function createDefaultMethodReducer(model, method) {
     if (index === -1) {
       return [
         ...state,
-        { ...resultInitialState, params, error, requesting, requested }
+        { ...resultInitialState, params, error, requesting, requested, updatedAt: Date.now() }
       ]
     }
 
@@ -49,7 +50,7 @@ function createDefaultMethodReducer(model, method) {
 
     return [
       ...state.slice(0, index),
-      { ...state[index], result, error, requesting, requested: true },
+      { ...state[index], result, error, requesting, requested: true, updatedAt: Date.now() },
       ...state.slice(index + 1, state.length)
     ];
   }

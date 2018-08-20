@@ -332,7 +332,7 @@ describe('Model', () => {
     state = timer.reducer(state, actions[1]);
 
     return new Promise((resolve, reject) =>
-      setTimeout(() => resolve(), 130)
+      setTimeout(() => resolve(), 135)
     ).then(() => {
       const timerId = timer.selectors(state).timerId();
 
@@ -352,7 +352,7 @@ describe('Model', () => {
         {
           type: '@@redux-models/TIMER/STOP_SUCCESS',
           payload: [timerId],
-          meta: undefined
+          meta: null
         }
       ]);
     });
@@ -506,5 +506,94 @@ describe('Model', () => {
         selector = user.selectors(state).loginResult({ password: 'fail' });
         expect(selector).toEqual(null);
       });
+  });
+
+  it('tests reset method', () => {
+    const responseError = new Error('wrong password');
+
+    const user = createModel({
+      name: 'user',
+      stateToModel: state => state,
+      methods: {
+        login: ({ password }) => {
+          if (password === 'fail') {
+            return Promise.reject(responseError);
+          }
+
+          return Promise.resolve({ token: '12345' });
+        },
+        syncLogin: () => {
+          return { token: '12345' };
+        }
+      }
+    });
+
+    let state = {};
+    const store = mockStore();
+    sinon.stub(Date, 'now').callsFake(() => 1);
+
+    store.dispatch(user.syncLogin({ password: '123' }));
+    store.dispatch(user.syncLoginReset());
+
+    const expectedActions = store.getActions();
+
+    state = user.reducer(state, expectedActions[0]);
+    state = user.reducer(state, expectedActions[1]);
+
+    expect(state).toEqual({
+      login: [],
+      syncLogin: [
+        {
+          params: [{ password: '123' }],
+          requested: true,
+          requesting: false,
+          result: { token: '12345' },
+          error: null,
+          updatedAt: 1
+        }
+      ]
+    });
+
+    state = user.reducer(state, expectedActions[2]);
+
+    expect(state).toEqual({
+      login: [],
+      syncLogin: []
+    });
+
+    store.clearActions();
+
+    return store.dispatch(user.login({ password: '456' })).then(() => {
+      store.dispatch(user.loginReset());
+
+      const expectedActions = store.getActions();
+
+      state = user.reducer(state, expectedActions[0]);
+      state = user.reducer(state, expectedActions[1]);
+
+      expect(state).toEqual({
+        syncLogin: [],
+        login: [
+          {
+            params: [{ password: '456' }],
+            requested: true,
+            requesting: false,
+            result: { token: '12345' },
+            error: null,
+            updatedAt: 1
+          }
+        ]
+      });
+
+      state = user.reducer(state, expectedActions[2]);
+
+      expect(state).toEqual({
+        login: [],
+        syncLogin: []
+      });
+
+      store.clearActions();
+      Date.now.restore();
+    });
   });
 });

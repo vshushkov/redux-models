@@ -1,6 +1,5 @@
 import isEqual from 'lodash/isEqual';
 import isFunction from 'lodash/isFunction';
-import snakeCase from 'lodash/snakeCase';
 import { methodNameToTypes, actionTypes } from './actions';
 import { normalizeMethods } from './methods';
 
@@ -24,12 +23,16 @@ function createDefaultMethodReducer(model, method) {
   };
 
   const initialState = [];
-  const [START, SUCCESS, ERROR] = methodNameToTypes(model.config().name, method.name || method);
+  const [START, SUCCESS, ERROR, RESET] = methodNameToTypes(
+    model.config().name,
+    method.name || method
+  );
 
   function reducer(state = initialState, action) {
-    if (![START, SUCCESS, ERROR].includes(action.type)) {
+    if (![START, SUCCESS, ERROR, RESET].includes(action.type)) {
       return state;
     }
+
 
     const error = action.type === ERROR ? action.meta : null;
     const params = action.payload || null;
@@ -37,20 +40,40 @@ function createDefaultMethodReducer(model, method) {
     const requested = action.type === SUCCESS || action.type === ERROR;
     const index = state.findIndex(row => isEqual(row.params, params));
 
+    if (action.type === RESET) {
+      return initialState;
+    }
+
     if (index === -1) {
       return [
         ...state,
-        { ...resultInitialState, params, error, requesting, requested, updatedAt: Date.now() }
-      ]
+        {
+          ...resultInitialState,
+          result: action.meta || null,
+          params,
+          error,
+          requesting,
+          requested,
+          updatedAt: Date.now()
+        }
+      ];
     }
 
-    const result = action.type === START ? state[index].result : (
-      action.type !== ERROR ? (action.meta || null) : null
-    );
+    const result =
+      action.type === START
+        ? state[index].result
+        : action.type !== ERROR ? action.meta || null : null;
 
     return [
       ...state.slice(0, index),
-      { ...state[index], result, error, requesting, requested: true, updatedAt: Date.now() },
+      {
+        ...state[index],
+        result: result || null,
+        error,
+        requesting,
+        requested: true,
+        updatedAt: Date.now()
+      },
       ...state.slice(index + 1, state.length)
     ];
   }
@@ -62,10 +85,13 @@ function createDefaultMethodReducer(model, method) {
 
 function createMethodReducer(model, method) {
   const definedReducers = model.config().reducers || {};
-  const [START, SUCCESS, ERROR] = methodNameToTypes(model.config().name, method.name || method);
-  return isFunction(definedReducers[method.name || method]) ?
-    definedReducers[method.name || method]({ START, SUCCESS, ERROR }) :
-    createDefaultMethodReducer(model, method);
+  const [START, SUCCESS, ERROR, RESET] = methodNameToTypes(
+    model.config().name,
+    method.name || method
+  );
+  return isFunction(definedReducers[method.name || method])
+    ? definedReducers[method.name || method]({ START, SUCCESS, ERROR, RESET })
+    : createDefaultMethodReducer(model, method);
 }
 
 /**
@@ -76,22 +102,27 @@ function createMethodReducer(model, method) {
 export function createReducer(model, combineReducers) {
   const methods = normalizeMethods(model.config().methods || {});
 
-  const reducers = methods
-    .reduce((reducers, method) => ({
+  const reducers = methods.reduce(
+    (reducers, method) => ({
       ...reducers,
       [method.name || method]: createMethodReducer(model, method)
-    }), {});
+    }),
+    {}
+  );
 
   if (isFunction(model.config().reducer)) {
-    reducers.model = model.config().reducer(
-      actionTypes(model.config().name, Object.keys(model.actions))
-    );
+    reducers.model = model
+      .config()
+      .reducer(actionTypes(model.config().name, Object.keys(model.actions)));
   }
 
-  const mixinsReducers = (model.config().mixins || [])
-    .reduce((mixinsReducers, mixin) => {
+  const mixinsReducers = (model.config().mixins || []).reduce(
+    (mixinsReducers, mixin) => {
       if (isFunction(mixin.createReducer)) {
-        const types = actionTypes(model.config().name, model._mixinsMethods[mixin.name] || []);
+        const types = actionTypes(
+          model.config().name,
+          model._mixinsMethods[mixin.name] || []
+        );
         return {
           ...mixinsReducers,
           [mixin.name]: mixin.createReducer(model, types, combineReducers)
@@ -101,13 +132,18 @@ export function createReducer(model, combineReducers) {
       return {
         ...mixinsReducers,
         ...(model._mixinsMethods[mixin.name] || [])
-          .filter((method) => !reducers[method.name || method])
-          .reduce((mixinsReducers, method) => ({
-            ...mixinsReducers,
-            [method.name || method]: createMethodReducer(model, method)
-          }), {})
+          .filter(method => !reducers[method.name || method])
+          .reduce(
+            (mixinsReducers, method) => ({
+              ...mixinsReducers,
+              [method.name || method]: createMethodReducer(model, method)
+            }),
+            {}
+          )
       };
-    }, {});
+    },
+    {}
+  );
 
   return combineReducers({
     ...mixinsReducers,

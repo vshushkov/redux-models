@@ -145,6 +145,8 @@ function createAction({ modelName, methodName, method, types, model }) {
       };
 
       asyncAction.actionParams = params;
+      asyncAction.modelName = modelName;
+      asyncAction.actionName = methodName;
       return asyncAction;
     }
 

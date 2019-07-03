@@ -2,7 +2,6 @@ language: node_js
 node_js:
   - "6"
   - "6.1"
-  - "5"
 after_success:
   - npm install codeclimate-test-reporter
   - codeclimate-test-reporter < coverage/lcov.info

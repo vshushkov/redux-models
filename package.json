@@ -33,8 +33,7 @@
     "lodash": "^4.*"
   },
   "peerDependencies": {
-    "redux": "*",
-    "redux-thunk": "*"
+    "redux": "*"
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",

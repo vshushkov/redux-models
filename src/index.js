@@ -8,7 +8,7 @@ import isString from 'lodash/isString';
 export function createModel(options = {}) {
   const {
     typePrefix = '@@redux-models',
-    modelsState = (state) => state,
+    modelsState = state => state,
     name = Math.random()
       .toString(36)
       .substring(7)
@@ -18,15 +18,20 @@ export function createModel(options = {}) {
     reducers: methodReducers
   } = options;
 
-  const model = {};
+  const model = { name };
   const _methods = normalizeMethods(methods);
 
-  createActions({ typePrefix, modelName: name, methods: _methods, model });
+  createActions({
+    typePrefix,
+    modelName: model.name,
+    methods: _methods,
+    model
+  });
 
   const reducers = createReducers({
     model,
     typePrefix,
-    modelName: name,
+    modelName: model.name,
     methods: _methods,
     reducer: modelReducer,
     reducers: methodReducers

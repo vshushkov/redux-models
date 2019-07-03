@@ -1,4 +1,5 @@
 import expect from 'expect';
+import { combineReducers } from 'redux';
 import configureMockStore from 'redux-mock-store';
 import sinon from 'sinon';
 import thunk from 'redux-thunk';
@@ -7,58 +8,65 @@ import { createModel } from '../src';
 const middlewares = [thunk];
 const mockStore = configureMockStore(middlewares);
 
+const typePrefix = 'PREFIX';
+
 describe('Model', () => {
   it('create a model with async method', () => {
     const responseData = ({ username, password }) => `${username}, ${password}`;
 
     const user = createModel({
+      typePrefix,
       name: 'user',
-      stateToModel: state => state,
       methods: {
-        login: ({ username, password }) => {
+        login: params => {
+          const { username, password } = params;
           return Promise.resolve(responseData({ username, password }));
         }
       }
     });
 
-    const params = {
-      username: 'username',
-      password: 'password'
-    };
+    const params = [
+      {
+        username: 'username',
+        password: 'password'
+      }
+    ];
 
     let state = {};
     const expectedActions = [
-      { payload: [params], type: '@@redux-models/USER/LOGIN_START' },
+      { payload: { params }, type: `${typePrefix}/USER/LOGIN` },
       {
-        payload: [params],
-        type: '@@redux-models/USER/LOGIN_SUCCESS',
-        meta: responseData(params)
+        payload: { params, result: responseData(...params) },
+        type: `${typePrefix}/USER/LOGIN_SUCCESS`
       }
     ];
 
     const store = mockStore();
-    const action = user.login(params);
+    const action = user.login(...params);
 
-    expect(action.asyncAction).toEqual(true);
-    expect(action.actionName).toEqual('login');
-    expect(action.actionParams).toEqual([params]);
-    expect(action.modelName).toEqual('user');
+    expect(user.login.asyncAction).toEqual(true);
+    expect(user.login.actionName).toEqual('login');
+    expect(user.login.modelName).toEqual('user');
+    expect(action.actionParams).toEqual(params);
 
     return store
-      .dispatch(user.login(params))
+      .dispatch(user.login(...params))
       .then(response => {
-        expect(response).toEqual(responseData(params));
+        expect(response).toEqual(responseData(...params));
 
         sinon.stub(Date, 'now').callsFake(() => 1);
 
-        let selector = user.selectors(state).login(params);
+        let selector = user.selectors(state).loginMeta(...params);
         expect(selector).toEqual({
+          error: null,
+          params: null,
           result: null,
           requesting: false,
-          requested: false
+          requested: false,
+          updatedAt: null
         });
 
-        let selectorResult = user.selectors(state).loginResult(params);
+        let selectorResult = user.selectors(state).login(...params);
         expect(selectorResult).toEqual(null);
 
         state = user.reducer(state, expectedActions[0]);
@@ -66,7 +74,7 @@ describe('Model', () => {
         expect(state).toEqual({
           login: [
             {
-              params: [params],
+              params,
               result: null,
               requesting: true,
               requested: false,
@@ -76,25 +84,25 @@ describe('Model', () => {
           ]
         });
 
-        selector = user.selectors(state).login(params);
+        selector = user.selectors(state).loginMeta(...params);
         expect(selector).toEqual({
           error: null,
-          params: [params],
+          params,
           result: null,
           requesting: true,
           requested: false,
           updatedAt: 1
         });
 
-        selectorResult = user.selectors(state).loginResult(params);
+        selectorResult = user.selectors(state).login(...params);
         expect(selectorResult).toEqual(null);
 
         state = user.reducer(state, expectedActions[1]);
         expect(state).toEqual({
           login: [
             {
-              params: [params],
-              result: responseData(params),
+              params,
+              result: responseData(...params),
               requesting: false,
               requested: true,
               error: null,
@@ -103,45 +111,44 @@ describe('Model', () => {
           ]
         });
 
-        selector = user.selectors(state).login(params);
+        selector = user.selectors(state).loginMeta(...params);
         expect(selector).toEqual({
           error: null,
-          params: [params],
-          result: responseData(params),
+          params,
+          result: responseData(...params),
           requesting: false,
           requested: true,
           updatedAt: 1
         });
 
-        selectorResult = user.selectors(state).loginResult(params);
-        expect(selectorResult).toEqual(responseData(params));
+        selectorResult = user.selectors(state).login(...params);
+        expect(selectorResult).toEqual(responseData(...params));
 
         store.clearActions();
 
         Date.now.restore();
 
-        return store.dispatch(user.login(params));
+        return store.dispatch(user.login(...params));
       })
       .then(response => {
         const expectedActions = [
-          { payload: [params], type: '@@redux-models/USER/LOGIN_START' },
+          { payload: { params }, type: `${typePrefix}/USER/LOGIN` },
           {
-            payload: [params],
-            type: '@@redux-models/USER/LOGIN_SUCCESS',
-            meta: responseData(params)
+            payload: { params, result: responseData(...params) },
+            type: `${typePrefix}/USER/LOGIN_SUCCESS`
           }
         ];
 
         sinon.stub(Date, 'now').callsFake(() => 1);
 
-        expect(response).toEqual(responseData(params));
+        expect(response).toEqual(responseData(...params));
 
         state = user.reducer(state, expectedActions[0]);
         expect(state).toEqual({
           login: [
             {
-              params: [params],
-              result: responseData(params),
+              params,
+              result: responseData(...params),
               requesting: true,
               requested: true,
               error: null,
@@ -150,25 +157,25 @@ describe('Model', () => {
           ]
         });
 
-        expect(user.selectors(state).login(params)).toEqual({
-          params: [params],
-          result: responseData(params),
+        expect(user.selectors(state).loginMeta(...params)).toEqual({
+          params,
+          result: responseData(...params),
           requesting: true,
           requested: true,
           error: null,
           updatedAt: 1
         });
 
-        expect(user.selectors(state).loginResult(params)).toEqual(
-          responseData(params)
+        expect(user.selectors(state).login(...params)).toEqual(
+          responseData(...params)
         );
 
         state = user.reducer(state, expectedActions[1]);
         expect(state).toEqual({
           login: [
             {
-              params: [params],
-              result: responseData(params),
+              params,
+              result: responseData(...params),
               requesting: false,
               requested: true,
               error: null,
@@ -177,117 +184,34 @@ describe('Model', () => {
           ]
         });
 
-        expect(user.selectors(state).login(params)).toEqual({
-          params: [params],
-          result: responseData(params),
+        expect(user.selectors(state).loginMeta(...params)).toEqual({
+          params,
+          result: responseData(...params),
           requesting: false,
           requested: true,
           error: null,
           updatedAt: 1
         });
 
-        expect(user.selectors(state).loginResult(params)).toEqual(
-          responseData(params)
+        expect(user.selectors(state).login(...params)).toEqual(
+          responseData(...params)
         );
 
         Date.now.restore();
       });
   });
 
-  it('create a model with async method and custom method reducer and selector', () => {
-    const user = createModel({
-      name: 'user',
-      stateToModel: state => state,
-      methods: {
-        login: ({ password }) => {
-          return Promise.resolve({ token: '12345' });
-        }
-      },
-      reducers: {
-        login: ({ START, SUCCESS, ERROR }) => (
-          state = {},
-          { type, meta, error }
-        ) => {
-          switch (type) {
-            case START:
-              return { requesting: true };
-            case SUCCESS:
-              return { requesting: false, result: meta };
-            case ERROR:
-              return { requesting: false, result: meta, error };
-          }
-
-          return state;
-        }
-      },
-      selectors: {
-        token() {
-          return this.getModelState().login.result.token;
-        }
-      }
-    });
-
-    const expectedActions = [
-      {
-        payload: [{ password: '123' }],
-        type: '@@redux-models/USER/LOGIN_START'
-      },
-      {
-        meta: { token: '12345' },
-        payload: [{ password: '123' }],
-        type: '@@redux-models/USER/LOGIN_SUCCESS'
-      }
-    ];
-
-    const store = mockStore();
-
-    return store.dispatch(user.login({ password: '123' })).then(response => {
-      expect(response).toEqual({ token: '12345' });
-      expect(store.getActions()).toEqual(expectedActions);
-
-      let state = {};
-      let selector = user.selectors(state).login();
-      expect(selector).toEqual(undefined);
-
-      let selectorResult = user
-        .selectors(state)
-        .loginResult({ password: 'blabla2' });
-      expect(selectorResult).toEqual(undefined);
-
-      state = user.reducer(state, expectedActions[0]);
-      expect(state).toEqual({ login: { requesting: true } });
-
-      selector = user.selectors(state).login({ password: 'blabla3' });
-      expect(selector).toEqual({ requesting: true });
-
-      state = user.reducer(state, expectedActions[1]);
-      expect(state).toEqual({
-        login: { requesting: false, result: { token: '12345' } }
-      });
-
-      selector = user.selectors(state).login({ password: 'blabla3' });
-      expect(selector).toEqual({
-        requesting: false,
-        result: { token: '12345' }
-      });
-
-      selector = user.selectors(state).loginResult({ password: 'blabla4' });
-      expect(selector).toEqual({ token: '12345' });
-
-      selector = user.selectors(state).token();
-      expect(selector).toEqual('12345');
-    });
-  });
-
   it('create a model with model reducer', () => {
     const initialState = { started: false, count: 0, timerId: null };
 
+    const store = mockStore();
+
     const timer = createModel({
       name: 'timer',
-      stateToModel: state => state,
+      modelsState: ({ models }) => models,
       methods: [
-        function start(dispatch) {
-          return setInterval(() => dispatch(this.increase()), 40);
+        function start() {
+          return setInterval(() => store.dispatch(this.increase()), 1);
         },
 
         'increase',
@@ -300,13 +224,11 @@ describe('Model', () => {
           clearInterval(timerId);
         }
       ],
-      reducer: ({ START, INCREASE, STOP }) => (
-        state = initialState,
-        action
-      ) => {
-        switch (action.type) {
+      reducer(state = initialState, { type, payload }, constants) {
+        const { START, INCREASE, STOP } = constants;
+        switch (type) {
           case START:
-            return { ...state, started: true, timerId: action.meta };
+            return { ...state, started: true, timerId: payload.result };
           case INCREASE:
             return { ...state, count: state.count + 1 };
           case STOP:
@@ -314,47 +236,44 @@ describe('Model', () => {
         }
 
         return state;
-      },
-      selectors: {
-        timerId() {
-          return this.getModelState().model.timerId;
-        }
       }
     });
 
-    let state = {};
-    const store = mockStore();
-    const actions = store.getActions();
+    const {
+      payload: { result: timerId }
+    } = store.dispatch(timer.start());
 
-    store.dispatch(timer.start());
-
-    state = timer.reducer(state, actions[0]);
-    state = timer.reducer(state, actions[1]);
-
-    return new Promise((resolve, reject) =>
-      setTimeout(() => resolve(), 135)
-    ).then(() => {
-      const timerId = timer.selectors(state).timerId();
-
+    return new Promise(resolve => setTimeout(resolve, 6)).then(() => {
       store.dispatch(timer.stop(timerId));
 
-      expect(actions).toEqual([
-        { type: '@@redux-models/TIMER/START_START', payload: [] },
-        {
-          type: '@@redux-models/TIMER/START_SUCCESS',
-          payload: [],
-          meta: timerId
-        },
-        { type: '@@redux-models/TIMER/INCREASE_SUCCESS', payload: 'increase' },
-        { type: '@@redux-models/TIMER/INCREASE_SUCCESS', payload: 'increase' },
-        { type: '@@redux-models/TIMER/INCREASE_SUCCESS', payload: 'increase' },
-        { type: '@@redux-models/TIMER/STOP_START', payload: [timerId] },
-        {
-          type: '@@redux-models/TIMER/STOP_SUCCESS',
-          payload: [timerId],
-          meta: null
-        }
-      ]);
+      const actions = store.getActions();
+
+      expect(actions[0]).toEqual({
+        type: '@@redux-models/TIMER/START',
+        payload: { result: timerId, params: [] }
+      });
+
+      expect(actions[1]).toEqual({
+        type: '@@redux-models/TIMER/INCREASE',
+        payload: { result: 'increase' }
+      });
+
+      expect(actions[actions.length - 1]).toEqual({
+        type: '@@redux-models/TIMER/STOP',
+        payload: { params: [timerId] }
+      });
+
+      let state = { models: {} };
+      const reducer = combineReducers({
+        models: combineReducers(timer.reducers)
+      });
+
+      actions.forEach(action => (state = reducer(state, action)));
+      expect(state.models.timer.model.count).toBeGreaterThan(1);
+      expect(state.models.timer.model.count).toEqual(
+        actions.filter(({ type }) => type === '@@redux-models/TIMER/INCREASE')
+          .length
+      );
     });
   });
 
@@ -363,7 +282,6 @@ describe('Model', () => {
 
     const user = createModel({
       name: 'user',
-      stateToModel: state => state,
       methods: {
         login: ({ password }) => {
           if (password === 'fail') {
@@ -384,53 +302,59 @@ describe('Model', () => {
       .then(response => {
         const expectedActions = [
           {
-            payload: [{ password: '123' }],
-            type: '@@redux-models/USER/LOGIN_START'
+            payload: { params: [{ password: '123' }] },
+            type: '@@redux-models/USER/LOGIN'
           },
           {
-            payload: [{ password: '123' }],
-            type: '@@redux-models/USER/LOGIN_SUCCESS',
-            meta: { token: '12345' }
+            payload: {
+              params: [{ password: '123' }],
+              result: { token: '12345' }
+            },
+            type: '@@redux-models/USER/LOGIN_SUCCESS'
           }
         ];
 
         expect(response).toEqual({ token: '12345' });
         expect(store.getActions()).toEqual(expectedActions);
 
-        state = user.reducer(state, expectedActions[0]);
-        state = user.reducer(state, expectedActions[1]);
+        store
+          .getActions()
+          .forEach(action => (state = user.reducer(state, action)));
 
         store.clearActions();
 
         return store.dispatch(user.login({ password: 'fail' }));
       })
       .then(() => {
-        throw new Error('should throw error');
+        throw new Error('this error should not happen');
       })
       .catch(error => {
         const expectedActions = [
           {
-            payload: [{ password: 'fail' }],
-            type: '@@redux-models/USER/LOGIN_START'
+            payload: { params: [{ password: 'fail' }] },
+            type: '@@redux-models/USER/LOGIN'
           },
           {
-            payload: [{ password: 'fail' }],
-            type: '@@redux-models/USER/LOGIN_ERROR',
-            meta: responseError
+            payload: { params: [{ password: 'fail' }], error: responseError },
+            type: '@@redux-models/USER/LOGIN_ERROR'
           }
         ];
 
-        expect(error.message).toEqual('wrong password');
+        expect(error.message).toEqual(responseError.message);
         expect(store.getActions()).toEqual(expectedActions);
 
-        let selector = user.selectors(state).login();
+        let selector = user.selectors(state).loginMeta();
         expect(selector).toEqual({
+          error: null,
+          params: null,
           requested: false,
           requesting: false,
-          result: null
+          result: null,
+          updatedAt: null
         });
 
-        selector = user.selectors(state).loginResult({ password: 'fail' });
+        selector = user.selectors(state).login({ password: 'fail' });
+
         expect(selector).toEqual(null);
 
         state = user.reducer(state, expectedActions[0]);
@@ -456,7 +380,7 @@ describe('Model', () => {
           ]
         });
 
-        selector = user.selectors(state).login({ password: '123' });
+        selector = user.selectors(state).loginMeta({ password: '123' });
         expect(selector).toEqual({
           params: [{ password: '123' }],
           requested: true,
@@ -466,7 +390,7 @@ describe('Model', () => {
           updatedAt: 1
         });
 
-        selector = user.selectors(state).loginResult({ password: '123' });
+        selector = user.selectors(state).login({ password: '123' });
         expect(selector).toEqual({ token: '12345' });
 
         state = user.reducer(state, expectedActions[1]);
@@ -491,7 +415,7 @@ describe('Model', () => {
           ]
         });
 
-        selector = user.selectors(state).login({ password: 'fail' });
+        selector = user.selectors(state).loginMeta({ password: 'fail' });
         expect(selector).toEqual({
           params: [{ password: 'fail' }],
           requested: true,
@@ -503,7 +427,7 @@ describe('Model', () => {
 
         Date.now.restore();
 
-        selector = user.selectors(state).loginResult({ password: 'fail' });
+        selector = user.selectors(state).login({ password: 'fail' });
         expect(selector).toEqual(null);
       });
   });
@@ -513,7 +437,6 @@ describe('Model', () => {
 
     const user = createModel({
       name: 'user',
-      stateToModel: state => state,
       methods: {
         login: ({ password }) => {
           if (password === 'fail') {
@@ -538,7 +461,6 @@ describe('Model', () => {
     const expectedActions = store.getActions();
 
     state = user.reducer(state, expectedActions[0]);
-    state = user.reducer(state, expectedActions[1]);
 
     expect(state).toEqual({
       login: [],
@@ -554,7 +476,7 @@ describe('Model', () => {
       ]
     });
 
-    state = user.reducer(state, expectedActions[2]);
+    state = user.reducer(state, expectedActions[1]);
 
     expect(state).toEqual({
       login: [],

@@ -56,7 +56,7 @@ describe('Model', () => {
 
         sinon.stub(Date, 'now').callsFake(() => 1);
 
-        let selector = user.selectors(state).loginMeta(...params);
+        let selector = user(state).loginMeta(...params);
         expect(selector).toEqual({
           error: null,
           params: null,
@@ -66,7 +66,7 @@ describe('Model', () => {
           updatedAt: null
         });
 
-        let selectorResult = user.selectors(state).login(...params);
+        let selectorResult = user(state).login(...params);
         expect(selectorResult).toEqual(null);
 
         state = user.reducer(state, expectedActions[0]);
@@ -84,7 +84,7 @@ describe('Model', () => {
           ]
         });
 
-        selector = user.selectors(state).loginMeta(...params);
+        selector = user(state).loginMeta(...params);
         expect(selector).toEqual({
           error: null,
           params,
@@ -94,7 +94,7 @@ describe('Model', () => {
           updatedAt: 1
         });
 
-        selectorResult = user.selectors(state).login(...params);
+        selectorResult = user(state).login(...params);
         expect(selectorResult).toEqual(null);
 
         state = user.reducer(state, expectedActions[1]);
@@ -111,7 +111,7 @@ describe('Model', () => {
           ]
         });
 
-        selector = user.selectors(state).loginMeta(...params);
+        selector = user(state).loginMeta(...params);
         expect(selector).toEqual({
           error: null,
           params,
@@ -121,7 +121,7 @@ describe('Model', () => {
           updatedAt: 1
         });
 
-        selectorResult = user.selectors(state).login(...params);
+        selectorResult = user(state).login(...params);
         expect(selectorResult).toEqual(responseData(...params));
 
         store.clearActions();
@@ -157,7 +157,7 @@ describe('Model', () => {
           ]
         });
 
-        expect(user.selectors(state).loginMeta(...params)).toEqual({
+        expect(user(state).loginMeta(...params)).toEqual({
           params,
           result: responseData(...params),
           requesting: true,
@@ -166,9 +166,7 @@ describe('Model', () => {
           updatedAt: 1
         });
 
-        expect(user.selectors(state).login(...params)).toEqual(
-          responseData(...params)
-        );
+        expect(user(state).login(...params)).toEqual(responseData(...params));
 
         state = user.reducer(state, expectedActions[1]);
         expect(state).toEqual({
@@ -184,7 +182,7 @@ describe('Model', () => {
           ]
         });
 
-        expect(user.selectors(state).loginMeta(...params)).toEqual({
+        expect(user(state).loginMeta(...params)).toEqual({
           params,
           result: responseData(...params),
           requesting: false,
@@ -193,9 +191,7 @@ describe('Model', () => {
           updatedAt: 1
         });
 
-        expect(user.selectors(state).login(...params)).toEqual(
-          responseData(...params)
-        );
+        expect(user(state).login(...params)).toEqual(responseData(...params));
 
         Date.now.restore();
       });
@@ -343,7 +339,7 @@ describe('Model', () => {
         expect(error.message).toEqual(responseError.message);
         expect(store.getActions()).toEqual(expectedActions);
 
-        let selector = user.selectors(state).loginMeta();
+        let selector = user(state).loginMeta();
         expect(selector).toEqual({
           error: null,
           params: null,
@@ -353,7 +349,7 @@ describe('Model', () => {
           updatedAt: null
         });
 
-        selector = user.selectors(state).login({ password: 'fail' });
+        selector = user(state).login({ password: 'fail' });
 
         expect(selector).toEqual(null);
 
@@ -380,7 +376,7 @@ describe('Model', () => {
           ]
         });
 
-        selector = user.selectors(state).loginMeta({ password: '123' });
+        selector = user(state).loginMeta({ password: '123' });
         expect(selector).toEqual({
           params: [{ password: '123' }],
           requested: true,
@@ -390,7 +386,7 @@ describe('Model', () => {
           updatedAt: 1
         });
 
-        selector = user.selectors(state).login({ password: '123' });
+        selector = user(state).login({ password: '123' });
         expect(selector).toEqual({ token: '12345' });
 
         state = user.reducer(state, expectedActions[1]);
@@ -415,7 +411,7 @@ describe('Model', () => {
           ]
         });
 
-        selector = user.selectors(state).loginMeta({ password: 'fail' });
+        selector = user(state).loginMeta({ password: 'fail' });
         expect(selector).toEqual({
           params: [{ password: 'fail' }],
           requested: true,
@@ -427,7 +423,7 @@ describe('Model', () => {
 
         Date.now.restore();
 
-        selector = user.selectors(state).login({ password: 'fail' });
+        selector = user(state).login({ password: 'fail' });
         expect(selector).toEqual(null);
       });
   });

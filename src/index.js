@@ -18,34 +18,37 @@ export function createModel(options = {}) {
     reducers: methodReducers
   } = options;
 
-  const model = { name };
   const _methods = normalizeMethods(methods);
 
+  const actions = {};
   createActions({
     typePrefix,
-    modelName: model.name,
+    modelName: name,
     methods: _methods,
-    model
+    actions
   });
 
   const reducers = createReducers({
-    model,
+    actions,
     typePrefix,
-    modelName: model.name,
+    modelName: name,
     methods: _methods,
     reducer: modelReducer,
     reducers: methodReducers
   });
 
-  model.reducer = combineReducers(reducers);
-  model.reducers = { [name]: model.reducer };
-  model.selectors = createDefaultSelectors({
+  const selectors = createDefaultSelectors({
     methods: _methods,
     reducers,
     modelsState
   });
 
-  return model;
+  Object.keys(actions).forEach(name => (selectors[name] = actions[name]));
+  selectors.modelName = name;
+  selectors.reducer = combineReducers(reducers);
+  selectors.reducers = { [name]: selectors.reducer };
+
+  return selectors;
 }
 
 function normalizeMethods(methods) {
@@ -90,7 +93,7 @@ function actionConstants({ typePrefix, modelName, methodName }) {
   };
 }
 
-function createActions({ typePrefix, modelName, methods, model }) {
+function createActions({ typePrefix, modelName, methods, actions }) {
   methods.forEach(({ method, methodName }) => {
     const [start, success, failure, reset] = methodNameToTypes({
       typePrefix,
@@ -98,19 +101,19 @@ function createActions({ typePrefix, modelName, methods, model }) {
       methodName
     });
 
-    model[methodName] = createAction({
-      model,
+    actions[methodName] = createAction({
+      actions,
       modelName,
       methodName,
       method,
       types: { start, success, failure }
     });
 
-    model[`${methodName}Reset`] = () => ({ type: reset });
+    actions[`${methodName}Reset`] = () => ({ type: reset });
   });
 }
 
-function createAction({ modelName, methodName, method, types, model }) {
+function createAction({ modelName, methodName, method, types, actions }) {
   const { start, success, failure } = types;
 
   if (!isFunction(method)) {
@@ -131,7 +134,7 @@ function createAction({ modelName, methodName, method, types, model }) {
 
   function action(...params) {
     action.asyncAction = false;
-    const result = method.call(model, ...params);
+    const result = method.call(actions, ...params);
 
     if (result && isFunction(result.then)) {
       action.asyncAction = true;
@@ -170,7 +173,7 @@ function createReducers({
   methods,
   reducer,
   reducers,
-  model
+  actions
 }) {
   const constants = methods.reduce(
     (constants, { methodName }) => ({
@@ -184,17 +187,17 @@ function createReducers({
     isFunction(reducer) &&
     ((state, action) => reducer(state, action, constants));
 
-  const methodsReducers = methods.reduce((actions, { methodName }) => {
+  const methodsReducers = methods.reduce((methodsReducers, { methodName }) => {
     const types = methodNameToTypes({ typePrefix, modelName, methodName });
     const isDefault = !reducers || !isFunction(reducers[methodName]);
     const reducer = isDefault
-      ? createDefaultMethodReducer({ types, action: model[methodName] })
+      ? createDefaultMethodReducer({ types, action: actions[methodName] })
       : (state, action) => reducers[methodName](state, action, types);
 
     reducer.isDefault = isDefault;
 
     return {
-      ...actions,
+      ...methodsReducers,
       [methodName]: reducer
     };
   }, {});

@@ -7,7 +7,7 @@ Models layer for Redux.
 
 ## Installation
 
-    npm install --save redux redux-models-creator
+    npm install --save redux redux-models
     
 ## Usage
 

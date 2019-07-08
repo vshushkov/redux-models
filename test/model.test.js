@@ -25,6 +25,10 @@ describe('Model', () => {
       }
     });
 
+    const reducer = combineReducers({
+      ...user.reducers
+    });
+
     const params = [
       {
         username: 'username',
@@ -54,6 +58,11 @@ describe('Model', () => {
       .then(response => {
         expect(response).toEqual(responseData(...params));
 
+        const actualActions = store.getActions();
+        expect(actualActions).toHaveLength(expectedActions.length);
+        expect(actualActions[0]).toEqual(expectedActions[0]);
+        expect(actualActions[1]).toEqual(expectedActions[1]);
+
         sinon.stub(Date, 'now').callsFake(() => 1);
 
         let selector = user(state).loginMeta(...params);
@@ -69,19 +78,21 @@ describe('Model', () => {
         let selectorResult = user(state).login(...params);
         expect(selectorResult).toEqual(null);
 
-        state = user.reducer(state, expectedActions[0]);
+        state = reducer(state, expectedActions[0]);
 
         expect(state).toEqual({
-          login: [
-            {
-              params,
-              result: null,
-              requesting: true,
-              requested: false,
-              error: null,
-              updatedAt: 1
-            }
-          ]
+          user: {
+            login: [
+              {
+                params,
+                result: null,
+                requesting: true,
+                requested: false,
+                error: null,
+                updatedAt: 1
+              }
+            ]
+          }
         });
 
         selector = user(state).loginMeta(...params);
@@ -97,18 +108,20 @@ describe('Model', () => {
         selectorResult = user(state).login(...params);
         expect(selectorResult).toEqual(null);
 
-        state = user.reducer(state, expectedActions[1]);
+        state = reducer(state, expectedActions[1]);
         expect(state).toEqual({
-          login: [
-            {
-              params,
-              result: responseData(...params),
-              requesting: false,
-              requested: true,
-              error: null,
-              updatedAt: 1
-            }
-          ]
+          user: {
+            login: [
+              {
+                params,
+                result: responseData(...params),
+                requesting: false,
+                requested: true,
+                error: null,
+                updatedAt: 1
+              }
+            ]
+          }
         });
 
         selector = user(state).loginMeta(...params);
@@ -125,73 +138,6 @@ describe('Model', () => {
         expect(selectorResult).toEqual(responseData(...params));
 
         store.clearActions();
-
-        Date.now.restore();
-
-        return store.dispatch(user.login(...params));
-      })
-      .then(response => {
-        const expectedActions = [
-          { payload: { params }, type: `${typePrefix}/USER/LOGIN` },
-          {
-            payload: { params, result: responseData(...params) },
-            type: `${typePrefix}/USER/LOGIN_SUCCESS`
-          }
-        ];
-
-        sinon.stub(Date, 'now').callsFake(() => 1);
-
-        expect(response).toEqual(responseData(...params));
-
-        state = user.reducer(state, expectedActions[0]);
-        expect(state).toEqual({
-          login: [
-            {
-              params,
-              result: responseData(...params),
-              requesting: true,
-              requested: true,
-              error: null,
-              updatedAt: 1
-            }
-          ]
-        });
-
-        expect(user(state).loginMeta(...params)).toEqual({
-          params,
-          result: responseData(...params),
-          requesting: true,
-          requested: true,
-          error: null,
-          updatedAt: 1
-        });
-
-        expect(user(state).login(...params)).toEqual(responseData(...params));
-
-        state = user.reducer(state, expectedActions[1]);
-        expect(state).toEqual({
-          login: [
-            {
-              params,
-              result: responseData(...params),
-              requesting: false,
-              requested: true,
-              error: null,
-              updatedAt: 1
-            }
-          ]
-        });
-
-        expect(user(state).loginMeta(...params)).toEqual({
-          params,
-          result: responseData(...params),
-          requesting: false,
-          requested: true,
-          error: null,
-          updatedAt: 1
-        });
-
-        expect(user(state).login(...params)).toEqual(responseData(...params));
 
         Date.now.restore();
       });
@@ -278,6 +224,7 @@ describe('Model', () => {
 
     const user = createModel({
       name: 'user',
+      modelsState: state => state,
       methods: {
         login: ({ password }) => {
           if (password === 'fail') {

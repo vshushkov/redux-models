@@ -6,9 +6,9 @@ import isArray from 'lodash/isArray';
 import isString from 'lodash/isString';
 
 export function createModel(options = {}) {
-  const {
+  let {
     typePrefix = '@@redux-models',
-    modelsState = state => state,
+    modelsState,
     name = Math.random()
       .toString(36)
       .substring(7)
@@ -17,6 +17,10 @@ export function createModel(options = {}) {
     reducer: modelReducer,
     reducers: methodReducers
   } = options;
+
+  if (!isFunction(modelsState)) {
+    modelsState = state => state[name];
+  }
 
   const _methods = normalizeMethods(methods);
 
@@ -292,9 +296,7 @@ function createSelector({ field, methodState }) {
 
 function createDefaultSelectors({ methods, reducers, modelsState }) {
   return storeState => {
-    const state = isFunction(modelsState)
-      ? modelsState(storeState)
-      : storeState;
+    const state = modelsState(storeState) || {};
 
     return methods
       .filter(

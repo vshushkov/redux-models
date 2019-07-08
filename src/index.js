@@ -33,7 +33,6 @@ export function createModel(options = {}) {
   });
 
   const reducers = createReducers({
-    actions,
     typePrefix,
     modelName: name,
     methods: _methods,
@@ -136,15 +135,12 @@ function createAction({ modelName, methodName, method, types, actions }) {
     return { type: failure, payload: { params, error } };
   }
 
-  function action(...params) {
-    action.asyncAction = false;
-    const result = method.call(actions, ...params);
+  function createAction(...params) {
+    function action(dispatch) {
+      const result = method.call(actions, ...params);
 
-    if (result && isFunction(result.then)) {
-      action.asyncAction = true;
-      const asyncAction = dispatch => {
+      if (result && isFunction(result.then)) {
         dispatch(startAction(params));
-
         return result
           .then(result => {
             dispatch(successAction(params, result));
@@ -154,21 +150,24 @@ function createAction({ modelName, methodName, method, types, actions }) {
             dispatch(failureAction(params, error));
             throw error;
           });
-      };
+      }
 
-      asyncAction.actionParams = params;
-      asyncAction.modelName = modelName;
-      asyncAction.actionName = methodName;
-      return asyncAction;
+      dispatch({ type: start, payload: { params, result, async: false } });
+
+      return result;
     }
 
-    return { type: start, payload: { params, result } };
+    action.actionParams = params;
+    action.modelName = modelName;
+    action.actionName = methodName;
+
+    return action;
   }
 
-  action.modelName = modelName;
-  action.actionName = methodName;
+  createAction.modelName = modelName;
+  createAction.actionName = methodName;
 
-  return action;
+  return createAction;
 }
 
 function createReducers({
@@ -176,8 +175,7 @@ function createReducers({
   modelName,
   methods,
   reducer,
-  reducers,
-  actions
+  reducers
 }) {
   const constants = methods.reduce(
     (constants, { methodName }) => ({
@@ -195,7 +193,7 @@ function createReducers({
     const types = methodNameToTypes({ typePrefix, modelName, methodName });
     const isDefault = !reducers || !isFunction(reducers[methodName]);
     const reducer = isDefault
-      ? createDefaultMethodReducer({ types, action: actions[methodName] })
+      ? createDefaultMethodReducer({ types })
       : (state, action) => reducers[methodName](state, action, types);
 
     reducer.isDefault = isDefault;
@@ -225,12 +223,10 @@ const resultInitialState = {
   updatedAt: null
 };
 
-function createDefaultMethodReducer({ types, action: methodAction }) {
+function createDefaultMethodReducer({ types }) {
   const [start, success, failure, reset] = types;
 
   return function defaultMethodReducer(state = [], action) {
-    const asyncAction = methodAction.asyncAction === true;
-
     if (action.type === reset) {
       return [];
     }
@@ -239,10 +235,10 @@ function createDefaultMethodReducer({ types, action: methodAction }) {
       return state;
     }
 
-    const { params = null, result = null, error = null } = action.payload || {};
+    const { params = null, result = null, error = null, async = true } = action.payload || {};
 
-    const requesting = asyncAction ? action.type === start : false;
-    const requested = asyncAction
+    const requesting = async ? action.type === start : false;
+    const requested = async
       ? action.type === success || action.type === failure
       : true;
     const index = state.findIndex(row => isEqual(row.params, params));

@@ -48,9 +48,10 @@ describe('Model', () => {
     const store = mockStore();
     const action = user.login(...params);
 
-    expect(user.login.asyncAction).toEqual(true);
     expect(user.login.actionName).toEqual('login');
     expect(user.login.modelName).toEqual('user');
+    expect(action.actionName).toEqual('login');
+    expect(action.modelName).toEqual('user');
     expect(action.actionParams).toEqual(params);
 
     return store
@@ -181,18 +182,17 @@ describe('Model', () => {
       }
     });
 
-    const {
-      payload: { result: timerId }
-    } = store.dispatch(timer.start());
+    const timerId = store.dispatch(timer.start());
 
     return new Promise(resolve => setTimeout(resolve, 6)).then(() => {
+
       store.dispatch(timer.stop(timerId));
 
       const actions = store.getActions();
 
       expect(actions[0]).toEqual({
         type: '@@redux-models/TIMER/START',
-        payload: { result: timerId, params: [] }
+        payload: { result: timerId, params: [], async: false }
       });
 
       expect(actions[1]).toEqual({
@@ -202,7 +202,7 @@ describe('Model', () => {
 
       expect(actions[actions.length - 1]).toEqual({
         type: '@@redux-models/TIMER/STOP',
-        payload: { params: [timerId] }
+        payload: { params: [timerId], async: false }
       });
 
       let state = { models: {} };

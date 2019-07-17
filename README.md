@@ -182,7 +182,7 @@ export default connect(
 
 ## Contributing
 
-See the [Contributors Guide](https://github.com/vshushkov/redux-models/blob/master/CONTIBUTING.md)
+See the [Contributors Guide](https://github.com/vshushkov/redux-models/blob/master/CONTRIBUTING.md)
 
 License
 [MIT](https://github.com/vshushkov/redux-models/blob/master/LICENSE)

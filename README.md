@@ -97,6 +97,8 @@ export default connect(
 
 #### Returns
 
+Newly created model with defined methods. Each model method creates action to dispatch.
+
 ### Model reducer
 
 Additional data processing from the methods can be done in the model reducer.

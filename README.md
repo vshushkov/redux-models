@@ -22,9 +22,8 @@ export default createModel({
   name: 'User',
   methods: {
     findByUsername(username) {
-      return fetch(`https://api.github.com/users/${username}`).then(res =>
-        res.json()
-      );
+      return fetch(`https://api.github.com/users/${username}`)
+        .then(res => res.json());
     }
   }
 });
@@ -104,8 +103,8 @@ Newly created model with defined methods. Each model method creates action to di
 Additional data processing from the methods can be done in the model reducer.
 
 Model reducer arguments are same as [redux reducers](https://redux.js.org/basics/reducers), except the last argument `types`. 
-It contains all action types strings your models can dispatch.
-In following example model `User` has one method `find` and can dispatch actions with types: `@@redux-models/USER/FIND`, `@@redux-models/USER/FIND_SUCCESS`, `@@redux-models/USER/FIND_ERROR`, `@@redux-models/USER/FIND_RESET`,
+It contains all action types strings your model can dispatch.
+In following example model `User` has one method `find` and it can dispatch actions with types: `@@redux-models/USER/FIND`, `@@redux-models/USER/FIND_SUCCESS`, `@@redux-models/USER/FIND_ERROR`, `@@redux-models/USER/FIND_RESET`,
 so `types` contains object:
 
 ```json5

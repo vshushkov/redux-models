@@ -73,7 +73,7 @@ export default connect(
     user: User(state).findByUsername(username)
   }),
   (dispatch, { username }) => ({
-    fetchUser: () => dispatch(User(state).findByUsername(username))
+    fetchUser: () => dispatch(User.findByUsername(username))
   })
 )(UserAvatar);
 ```

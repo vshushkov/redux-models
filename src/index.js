@@ -1,11 +1,8 @@
 import { combineReducers } from 'redux';
 import isFunction from 'lodash/isFunction';
+import isArray from 'lodash/isArray';
 import isEqual from 'lodash/isEqual';
-import {
-  actionConstants,
-  methodNameToTypes,
-  normalizeMethods
-} from './utils';
+import { actionConstants, methodNameToTypes, normalizeMethods } from './utils';
 
 export { actionConstants };
 
@@ -57,23 +54,25 @@ export function createModel(options = {}) {
 }
 
 export function createActions({ typePrefix, modelName, methods, actions }) {
-  methods.forEach(({ method, methodName }) => {
-    const [start, success, failure, reset] = methodNameToTypes({
-      typePrefix,
-      modelName,
-      methodName
-    });
+  (isArray(methods) ? methods : normalizeMethods(methods)).forEach(
+    ({ method, methodName }) => {
+      const [start, success, failure, reset] = methodNameToTypes({
+        typePrefix,
+        modelName,
+        methodName
+      });
 
-    actions[methodName] = createAction({
-      actions,
-      modelName,
-      methodName,
-      method,
-      types: { start, success, failure }
-    });
+      actions[methodName] = createAction({
+        actions,
+        modelName,
+        methodName,
+        method,
+        types: { start, success, failure }
+      });
 
-    actions[`${methodName}Reset`] = () => ({ type: reset });
-  });
+      actions[`${methodName}Reset`] = () => ({ type: reset });
+    }
+  );
 }
 
 function createAction({ modelName, methodName, method, types, actions }) {

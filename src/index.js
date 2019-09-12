@@ -56,7 +56,7 @@ export function createModel(options = {}) {
   return selectors;
 }
 
-function createActions({ typePrefix, modelName, methods, actions }) {
+export function createActions({ typePrefix, modelName, methods, actions }) {
   methods.forEach(({ method, methodName }) => {
     const [start, success, failure, reset] = methodNameToTypes({
       typePrefix,

@@ -1,21 +1,24 @@
 import { combineReducers } from 'redux';
-import snakeCase from 'lodash/snakeCase';
 import isFunction from 'lodash/isFunction';
 import isEqual from 'lodash/isEqual';
-import isArray from 'lodash/isArray';
-import isString from 'lodash/isString';
+import {
+  actionConstants,
+  methodNameToTypes,
+  normalizeMethods
+} from './utils';
+
+export { actionConstants };
 
 export function createModel(options = {}) {
   let {
-    typePrefix = '@@redux-models',
+    typePrefix,
     modelsState,
     name = Math.random()
       .toString(36)
       .substring(7)
       .toUpperCase(),
     methods,
-    reducer: modelReducer,
-    reducers: methodReducers
+    reducer: modelReducer
   } = options;
 
   if (!isFunction(modelsState)) {
@@ -36,8 +39,7 @@ export function createModel(options = {}) {
     typePrefix,
     modelName: name,
     methods: _methods,
-    reducer: modelReducer,
-    reducers: methodReducers
+    reducer: modelReducer
   });
 
   const selectors = createDefaultSelectors({
@@ -52,48 +54,6 @@ export function createModel(options = {}) {
   selectors.reducers = { [name]: selectors.reducer };
 
   return selectors;
-}
-
-function normalizeMethods(methods) {
-  return isArray(methods)
-    ? methods
-        .map(method => ({
-          methodName: isString(method) ? method : method.name,
-          method
-        }))
-        .filter(({ methodName }) => !!methodName)
-    : Object.keys(methods).map(methodName => ({
-        methodName,
-        method: methods[methodName]
-      }));
-}
-
-function methodNameToTypes({ typePrefix, modelName, methodName }) {
-  const type = `${typePrefix}/${snakeCase(modelName).toUpperCase()}/${snakeCase(
-    methodName
-  ).toUpperCase()}`;
-  return [type, `${type}_SUCCESS`, `${type}_ERROR`, `${type}_RESET`];
-}
-
-function actionConstants({ typePrefix, modelName, methodName }) {
-  const [start, success, error, reset] = methodNameToTypes({
-    typePrefix,
-    modelName,
-    methodName
-  });
-
-  const type = snakeCase(methodName).toUpperCase();
-
-  return {
-    [type]: start,
-    [methodName]: start,
-    [`${type}_SUCCESS`]: success,
-    [`${methodName}Success`]: success,
-    [`${type}_ERROR`]: error,
-    [`${methodName}Error`]: error,
-    [`${type}_RESET`]: reset,
-    [`${methodName}Reset`]: reset
-  };
 }
 
 function createActions({ typePrefix, modelName, methods, actions }) {
@@ -170,13 +130,7 @@ function createAction({ modelName, methodName, method, types, actions }) {
   return createAction;
 }
 
-function createReducers({
-  typePrefix,
-  modelName,
-  methods,
-  reducer,
-  reducers
-}) {
+function createReducers({ typePrefix, modelName, methods, reducer }) {
   const constants = methods.reduce(
     (constants, { methodName }) => ({
       ...constants,
@@ -191,12 +145,9 @@ function createReducers({
 
   const methodsReducers = methods.reduce((methodsReducers, { methodName }) => {
     const types = methodNameToTypes({ typePrefix, modelName, methodName });
-    const isDefault = !reducers || !isFunction(reducers[methodName]);
-    const reducer = isDefault
-      ? createDefaultMethodReducer({ types })
-      : (state, action) => reducers[methodName](state, action, types);
+    const reducer = createDefaultMethodReducer({ types });
 
-    reducer.isDefault = isDefault;
+    reducer.isDefault = true;
 
     return {
       ...methodsReducers,
@@ -235,7 +186,8 @@ function createDefaultMethodReducer({ types }) {
       return state;
     }
 
-    const { params = null, result = null, error = null, async = true } = action.payload || {};
+    const { params = null, result = null, error = null, async = true } =
+      action.payload || {};
 
     const requesting = async ? action.type === start : false;
     const requested = async

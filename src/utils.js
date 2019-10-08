@@ -4,18 +4,39 @@ import snakeCase from 'lodash/snakeCase';
 
 export const defaultTypePrefix = '@@redux-models';
 
-export function normalizeMethods(methods) {
-  return isArray(methods)
+export function normalizeMethods(methods, { mixins = null } = {}) {
+  const baseMethods = isArray(methods)
     ? methods
         .map(method => ({
           methodName: isString(method) ? method : method.name,
           method
         }))
         .filter(({ methodName }) => !!methodName)
-    : Object.keys(methods).map(methodName => ({
-        methodName,
-        method: methods[methodName]
-      }));
+    : methods
+      ? Object.keys(methods).map(methodName => ({
+          methodName,
+          method: methods[methodName]
+        }))
+      : [];
+
+  if (isArray(mixins)) {
+    return [
+      ...baseMethods,
+      ...mixins.reduce((mixinsMethods, { name, methods }) => {
+        return [
+          ...mixinsMethods,
+          ...(name
+            ? normalizeMethods(methods || []).map(method => ({
+                ...method,
+                mixinName: name
+              }))
+            : [])
+        ];
+      }, [])
+    ];
+  }
+
+  return baseMethods;
 }
 
 export function methodNameToTypes({ typePrefix, modelName, methodName }) {

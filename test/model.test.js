@@ -4,11 +4,47 @@ import configureMockStore from 'redux-mock-store';
 import sinon from 'sinon';
 import thunk from 'redux-thunk';
 import { createModel } from '../src';
+import { methodNameToTypes } from '../src/utils';
 
 const middlewares = [thunk];
 const mockStore = configureMockStore(middlewares);
 
 const typePrefix = 'PREFIX';
+
+function createMixin(name, methods) {
+  const _methods = methods.reduce((methods, method) => {
+    const name = typeof method === 'string' ? method : method.name;
+    const value = typeof method === 'string' ? () => method : method;
+    return { ...methods, [name]: value };
+  }, {});
+
+  return {
+    name,
+    methods: _methods,
+    createReducer: (model, constants) => (state = {}, action) => {
+      const { type, payload: { params: [param] = [] } = {} } = action;
+      const name = Object.keys(_methods).find(name => constants[name] === type);
+
+      if (name) {
+        return { ...state, [name]: param };
+      }
+
+      return state;
+    },
+    createSelectors: mixinState => {
+      return Object.keys(_methods).reduce(
+        (selectors, methodName) => ({
+          ...selectors,
+          [methodName]: () => {
+            console.log('mixinState', name, mixinState);
+            return mixinState[methodName];
+          }
+        }),
+        {}
+      );
+    }
+  };
+}
 
 describe('Model', () => {
   it('create a model with async method', () => {
@@ -54,94 +90,92 @@ describe('Model', () => {
     expect(action.modelName).toEqual('user');
     expect(action.actionParams).toEqual(params);
 
-    return store
-      .dispatch(user.login(...params))
-      .then(response => {
-        expect(response).toEqual(responseData(...params));
+    return store.dispatch(user.login(...params)).then(response => {
+      expect(response).toEqual(responseData(...params));
 
-        const actualActions = store.getActions();
-        expect(actualActions).toHaveLength(expectedActions.length);
-        expect(actualActions[0]).toEqual(expectedActions[0]);
-        expect(actualActions[1]).toEqual(expectedActions[1]);
+      const actualActions = store.getActions();
+      expect(actualActions).toHaveLength(expectedActions.length);
+      expect(actualActions[0]).toEqual(expectedActions[0]);
+      expect(actualActions[1]).toEqual(expectedActions[1]);
 
-        sinon.stub(Date, 'now').callsFake(() => 1);
+      sinon.stub(Date, 'now').callsFake(() => 1);
 
-        let selector = user(state).loginMeta(...params);
-        expect(selector).toEqual({
-          error: null,
-          params: null,
-          result: null,
-          requesting: false,
-          requested: false,
-          updatedAt: null
-        });
-
-        let selectorResult = user(state).login(...params);
-        expect(selectorResult).toEqual(null);
-
-        state = reducer(state, expectedActions[0]);
-
-        expect(state).toEqual({
-          user: {
-            login: [
-              {
-                params,
-                result: null,
-                requesting: true,
-                requested: false,
-                error: null,
-                updatedAt: 1
-              }
-            ]
-          }
-        });
-
-        selector = user(state).loginMeta(...params);
-        expect(selector).toEqual({
-          error: null,
-          params,
-          result: null,
-          requesting: true,
-          requested: false,
-          updatedAt: 1
-        });
-
-        selectorResult = user(state).login(...params);
-        expect(selectorResult).toEqual(null);
-
-        state = reducer(state, expectedActions[1]);
-        expect(state).toEqual({
-          user: {
-            login: [
-              {
-                params,
-                result: responseData(...params),
-                requesting: false,
-                requested: true,
-                error: null,
-                updatedAt: 1
-              }
-            ]
-          }
-        });
-
-        selector = user(state).loginMeta(...params);
-        expect(selector).toEqual({
-          error: null,
-          params,
-          result: responseData(...params),
-          requesting: false,
-          requested: true,
-          updatedAt: 1
-        });
-
-        selectorResult = user(state).login(...params);
-        expect(selectorResult).toEqual(responseData(...params));
-
-        store.clearActions();
-
-        Date.now.restore();
+      let selector = user(state).loginMeta(...params);
+      expect(selector).toEqual({
+        error: null,
+        params: null,
+        result: null,
+        requesting: false,
+        requested: false,
+        updatedAt: null
       });
+
+      let selectorResult = user(state).login(...params);
+      expect(selectorResult).toEqual(null);
+
+      state = reducer(state, expectedActions[0]);
+
+      expect(state).toEqual({
+        user: {
+          login: [
+            {
+              params,
+              result: null,
+              requesting: true,
+              requested: false,
+              error: null,
+              updatedAt: 1
+            }
+          ]
+        }
+      });
+
+      selector = user(state).loginMeta(...params);
+      expect(selector).toEqual({
+        error: null,
+        params,
+        result: null,
+        requesting: true,
+        requested: false,
+        updatedAt: 1
+      });
+
+      selectorResult = user(state).login(...params);
+      expect(selectorResult).toEqual(null);
+
+      state = reducer(state, expectedActions[1]);
+      expect(state).toEqual({
+        user: {
+          login: [
+            {
+              params,
+              result: responseData(...params),
+              requesting: false,
+              requested: true,
+              error: null,
+              updatedAt: 1
+            }
+          ]
+        }
+      });
+
+      selector = user(state).loginMeta(...params);
+      expect(selector).toEqual({
+        error: null,
+        params,
+        result: responseData(...params),
+        requesting: false,
+        requested: true,
+        updatedAt: 1
+      });
+
+      selectorResult = user(state).login(...params);
+      expect(selectorResult).toEqual(responseData(...params));
+
+      store.clearActions();
+
+      Date.now.restore();
+    });
   });
 
   it('create a model with model reducer', () => {
@@ -185,7 +219,6 @@ describe('Model', () => {
     const timerId = store.dispatch(timer.start());
 
     return new Promise(resolve => setTimeout(resolve, 6)).then(() => {
-
       store.dispatch(timer.stop(timerId));
 
       const actions = store.getActions();
@@ -460,5 +493,89 @@ describe('Model', () => {
       store.clearActions();
       Date.now.restore();
     });
+  });
+
+  it('model with mixins', async () => {
+    const model = createModel({
+      name: 'model',
+      modelState: state => state,
+      mixins: [
+        createMixin('mixin1', ['method1', 'method2']),
+        createMixin('mixin2', ['method1', 'method2', 'method3', 'method4']),
+        createMixin('mixin3', ['method1', 'method2', 'method3']),
+        { name: 'mixin4' }
+      ],
+      methods: {
+        method4() {
+          return 'method4';
+        }
+      }
+    });
+
+    let state = {};
+    const store = mockStore();
+
+    await store.dispatch(model.method1('param1'));
+    await store.dispatch(model.method1('param2'));
+    await store.dispatch(model.method2('param1'));
+    await store.dispatch(model.method3('param1'));
+
+    const expectedActions = store.getActions();
+
+    state = model.reducer(state, expectedActions[0]);
+
+    expect(state).toEqual({
+      method4: [],
+      mixins: {
+        mixin1: {
+          method1: 'param1'
+        },
+        mixin2: {}
+      }
+    });
+
+    state = model.reducer(state, expectedActions[1]);
+
+    expect(state).toEqual({
+      method4: [],
+      mixins: {
+        mixin1: {
+          method1: 'param2'
+        },
+        mixin2: {}
+      }
+    });
+
+    state = model.reducer(state, expectedActions[2]);
+
+    expect(state).toEqual({
+      method4: [],
+      mixins: {
+        mixin1: {
+          method1: 'param2',
+          method2: 'param1'
+        },
+        mixin2: {}
+      }
+    });
+
+    state = model.reducer(state, expectedActions[3]);
+
+    expect(state).toEqual({
+      method4: [],
+      mixins: {
+        mixin1: {
+          method1: 'param2',
+          method2: 'param1'
+        },
+        mixin2: {
+          method3: 'param1'
+        }
+      }
+    });
+
+    expect(model(state).method1()).toEqual('param2');
+    expect(model(state).method2()).toEqual('param1');
+    expect(model(state).method3()).toEqual('param1');
   });
 });

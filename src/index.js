@@ -2,6 +2,7 @@ import { combineReducers } from 'redux';
 import isFunction from 'lodash/isFunction';
 import isArray from 'lodash/isArray';
 import isEqual from 'lodash/isEqual';
+import isEmpty from 'lodash/isEmpty';
 import { actionConstants, methodNameToTypes, normalizeMethods } from './utils';
 
 export { actionConstants };
@@ -16,6 +17,7 @@ export function createModel(options = {}) {
       .substring(7)
       .toUpperCase(),
     methods,
+    mixins,
     reducer: modelReducer
   } = options;
 
@@ -27,7 +29,7 @@ export function createModel(options = {}) {
     modelState = state => state[name];
   }
 
-  const _methods = normalizeMethods(methods);
+  const _methods = normalizeMethods(methods, { mixins });
 
   const actions = {};
   createActions({
@@ -41,12 +43,15 @@ export function createModel(options = {}) {
     typePrefix,
     modelName: name,
     methods: _methods,
-    reducer: modelReducer
+    reducer: modelReducer,
+    actions,
+    mixins
   });
 
-  const selectors = createDefaultSelectors({
+  const selectors = createSelectors({
     methods: _methods,
-    reducers,
+    mixins,
+    actions,
     modelState
   });
 
@@ -58,24 +63,46 @@ export function createModel(options = {}) {
   return selectors;
 }
 
-export function createActions({ typePrefix, modelName, methods, actions }) {
-  (isArray(methods) ? methods : normalizeMethods(methods)).forEach(
-    ({ method, methodName }) => {
-      const [start, success, failure, reset] = methodNameToTypes({
-        typePrefix,
-        modelName,
-        methodName
-      });
+export function createActions({
+  typePrefix,
+  modelName,
+  methods,
+  actions,
+  mixins
+}) {
+  (isArray(methods) ? methods : normalizeMethods(methods, { mixins })).forEach(
+    ({ method, methodName, mixinName }) => {
+      if (!actions[methodName]) {
+        const [start, success, failure, reset] = methodNameToTypes({
+          typePrefix,
+          modelName,
+          methodName
+        });
 
-      actions[methodName] = createAction({
-        actions,
-        modelName,
-        methodName,
-        method,
-        types: { start, success, failure }
-      });
+        actions[methodName] = createAction({
+          actions,
+          modelName,
+          methodName,
+          method,
+          types: { start, success, failure }
+        });
 
-      actions[`${methodName}Reset`] = () => ({ type: reset });
+        actions[methodName].modelName = modelName;
+        actions[methodName].actionName = methodName;
+        actions[methodName].mixinName = mixinName;
+
+        actions[`${methodName}Reset`] = () => ({ type: reset });
+      } else {
+        console.warn(
+          `redux-models: method${
+            mixinName ? ` from mixin '${mixinName}'` : ''
+          } with name '${methodName}' already defined${
+            actions[methodName].mixinName
+              ? ` in '${actions[methodName].mixinName}'`
+              : ` in model methods`
+          }`
+        );
+      }
     }
   );
 }
@@ -128,45 +155,79 @@ function createAction({ modelName, methodName, method, types, actions }) {
     return action;
   }
 
-  createAction.modelName = modelName;
-  createAction.actionName = methodName;
-
   return createAction;
 }
 
-function createReducers({ typePrefix, modelName, methods, reducer }) {
-  const constants = methods.reduce(
-    (constants, { methodName }) => ({
-      ...constants,
-      ...actionConstants({ typePrefix, modelName, methodName })
+function createReducers({
+  typePrefix,
+  modelName,
+  methods,
+  reducer,
+  actions,
+  mixins
+}) {
+  const modelReducer =
+    isFunction(reducer) &&
+    ((state, action) =>
+      reducer(
+        state,
+        action,
+        methods.reduce(
+          (constants, { methodName }) => ({
+            ...constants,
+            ...actionConstants({ typePrefix, modelName, methodName })
+          }),
+          {}
+        )
+      ));
+
+  const mixinsReducers =
+    isArray(mixins) &&
+    mixins.reduce((reducers, { createReducer, name }) => {
+      if (!isFunction(createReducer)) {
+        console.error(
+          `redux-models: createReducer is not defined in mixin ${name}`
+        );
+        return reducers;
+      }
+
+      const constants = methods
+        .filter(({ methodName }) => actions[methodName].mixinName === name)
+        .reduce(
+          (constants, { methodName }) => ({
+            ...constants,
+            ...actionConstants({ typePrefix, modelName, methodName })
+          }),
+          {}
+        );
+
+      if (isEmpty(constants)) {
+        return reducers;
+      }
+
+      return {
+        ...reducers,
+        [name]: createReducer(modelName, constants)
+      };
+    }, {});
+
+  const methodsReducers = methods.filter(({ mixinName }) => !mixinName).reduce(
+    (methodsReducers, { methodName }) => ({
+      ...methodsReducers,
+      [methodName]: createDefaultMethodReducer({
+        types: methodNameToTypes({ typePrefix, modelName, methodName })
+      })
     }),
     {}
   );
 
-  const modelReducer =
-    isFunction(reducer) &&
-    ((state, action) => reducer(state, action, constants));
-
-  const methodsReducers = methods.reduce((methodsReducers, { methodName }) => {
-    const types = methodNameToTypes({ typePrefix, modelName, methodName });
-    const reducer = createDefaultMethodReducer({ types });
-
-    reducer.isDefault = true;
-
-    return {
-      ...methodsReducers,
-      [methodName]: reducer
-    };
-  }, {});
-
-  if (modelReducer) {
-    return {
-      ...methodsReducers,
-      model: modelReducer
-    };
-  }
-
-  return methodsReducers;
+  return {
+    ...methodsReducers,
+    ...(modelReducer ? { model: modelReducer } : {}),
+    ...(!isEmpty(mixinsReducers)
+      ? { mixins: combineReducers(mixinsReducers) }
+      : {})
+  };
 }
 
 const resultInitialState = {
@@ -246,28 +307,47 @@ function createSelector({ field, methodState }) {
   };
 }
 
-function createDefaultSelectors({ methods, reducers, modelState }) {
+function createSelectors({ methods, modelState, mixins }) {
+  const mixinsSelectors =
+    isArray(mixins) &&
+    mixins.length > 0 &&
+    mixins.reduce((selectors, { createSelectors, name }) => {
+      if (!isFunction(createSelectors)) {
+        console.error(
+          `redux-models: createSelectors is not defined in mixin ${name}`
+        );
+        return selectors;
+      }
+
+      return {
+        ...selectors,
+        [name]: state => createSelectors(state)
+      };
+    }, {});
+
   return storeState => {
     const state = modelState(storeState) || {};
 
-    return methods
-      .filter(
-        ({ methodName }) =>
-          reducers[methodName] && reducers[methodName].isDefault
-      )
-      .reduce((selectors, { methodName }) => {
-        const methodState = state[methodName] || [];
-
+    return methods.reduce((selectors, { methodName, mixinName }) => {
+      if (mixinName) {
+        const mixinState = (state.mixins || {})[mixinName] || {};
         return {
-          ...selectors,
-          [methodName]: createSelector({
-            methodState,
-            field: 'result'
-          }),
-          [`${methodName}Meta`]: createSelector({
-            methodState
-          })
+          ...mixinsSelectors[mixinName](mixinState),
+          ...selectors
         };
-      }, {});
+      }
+
+      const methodState = state[methodName] || [];
+      return {
+        ...selectors,
+        [methodName]: createSelector({
+          methodState,
+          field: 'result'
+        }),
+        [`${methodName}Meta`]: createSelector({
+          methodState
+        })
+      };
+    }, {});
   };
 }

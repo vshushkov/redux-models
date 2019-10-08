@@ -3,7 +3,7 @@
 [![Build](https://travis-ci.org/vshushkov/redux-models.svg?branch=master)](https://travis-ci.org/vshushkov/redux-models)
 [![Test Coverage](https://codeclimate.com/github/vshushkov/redux-models/badges/coverage.svg)](https://codeclimate.com/github/vshushkov/redux-models/coverage)
 
-Models layer for Redux. `redux-models` simplifies working with remote data (well.. not only remote) and helps to organize your code. 
+Models layer for Redux. `redux-models` simplifies working with remote data (well.. not only remote) and helps to organize your code.
 
 ## Installation
 
@@ -22,8 +22,9 @@ export default createModel({
   name: 'User',
   methods: {
     findByUsername(username) {
-      return fetch(`https://api.github.com/users/${username}`)
-        .then(res => res.json());
+      return fetch(`https://api.github.com/users/${username}`).then(res =>
+        res.json()
+      );
     }
   }
 });
@@ -89,6 +90,7 @@ export default connect(
 `options`:
 
 - `options.name`: (`String`): Name of a model
+- `options.mixins`: (`Array`): Array of mixins
 - `options.methods`: (`Object`): Model's methods
 - `options.reducer`: (`Function` [optional]): [Model reducer](#model-reducer).
 - `options.typePrefix`: (`String` [optional]): Prefix of actions types. Default `@@redux-models`.
@@ -102,8 +104,8 @@ Newly created model with defined methods. Each model method creates action to di
 
 Additional data processing from the methods can be done in the model reducer.
 
-Model reducer arguments are same as [redux reducers](https://redux.js.org/basics/reducers), except the last argument `types`. 
-It contains all action types strings your model can dispatch.
+Model reducer arguments are same as [redux reducers](https://redux.js.org/basics/reducers), except the last argument `types`.
+It contains all action types strings your model can dispatch (including mixins action types).
 In following example model `User` has one method `find` and it can dispatch actions with types: `@@redux-models/USER/FIND`, `@@redux-models/USER/FIND_SUCCESS`, `@@redux-models/USER/FIND_ERROR`, `@@redux-models/USER/FIND_RESET`,
 so `types` contains object:
 
@@ -156,7 +158,7 @@ export default createModel({
         }
       };
     }
-    
+
     return state;
   }
 });
@@ -168,16 +170,46 @@ Then:
 import { connect } from 'react-redux';
 // ...
 
-export default connect(
-  (state, { id }) => ({
-    user: state.User.model.byId[id]
-  })
-)(UserCard);
+export default connect((state, { id }) => ({
+  user: state.User.model.byId[id]
+}))(UserCard);
 ```
 
-## Future
+## Mixins
 
-- Mixins
+Mixins allow you to add method sets to multiple models. For example mixin 
+[`crud`](https://www.npmjs.com/package/redux-models-mixin-crud)
+adds methods: `create`, `updateById`, `deleteById`, `find`, `findById`.
+
+##### `crud.js`
+
+```jsx harmony
+import createMixin from 'redux-models-mixin-crud';
+
+export default function crudMixin(path) {
+  return createMixin({ 
+    methods: {
+      create() { /*...*/ },
+      updateById() { /*...*/ },
+      deleteById() { /*...*/ },
+      find() { /*...*/ },
+      findById() { /*...*/ }
+    } 
+  });
+}
+```
+
+##### `book.js`
+
+```jsx harmony
+import { createModel } from 'redux-models';
+import crudMixin from './crud';
+
+export default createModel({
+  name: 'Book',
+  mixins: [crudMixin('/books')]
+});
+```
 
 ## Contributing
 

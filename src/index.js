@@ -9,6 +9,7 @@ export { actionConstants };
 export function createModel(options = {}) {
   let {
     typePrefix,
+    modelState,
     modelsState,
     name = Math.random()
       .toString(36)
@@ -18,8 +19,12 @@ export function createModel(options = {}) {
     reducer: modelReducer
   } = options;
 
-  if (!isFunction(modelsState)) {
-    modelsState = state => state[name];
+  if (isFunction(modelsState) && !isFunction(modelState)) {
+    modelState = modelsState;
+  }
+
+  if (!isFunction(modelState)) {
+    modelState = state => state[name];
   }
 
   const _methods = normalizeMethods(methods);
@@ -42,7 +47,7 @@ export function createModel(options = {}) {
   const selectors = createDefaultSelectors({
     methods: _methods,
     reducers,
-    modelsState
+    modelState
   });
 
   Object.keys(actions).forEach(name => (selectors[name] = actions[name]));
@@ -241,9 +246,9 @@ function createSelector({ field, methodState }) {
   };
 }
 
-function createDefaultSelectors({ methods, reducers, modelsState }) {
+function createDefaultSelectors({ methods, reducers, modelState }) {
   return storeState => {
-    const state = modelsState(storeState) || {};
+    const state = modelState(storeState) || {};
 
     return methods
       .filter(

@@ -151,7 +151,7 @@ describe('Model', () => {
 
     const timer = createModel({
       name: 'timer',
-      modelsState: ({ models }) => models,
+      modelState: ({ models }) => models,
       methods: [
         function start() {
           return setInterval(() => store.dispatch(this.increase()), 1);

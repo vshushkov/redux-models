@@ -92,7 +92,7 @@ export default connect(
 - `options.methods`: (`Object`): Model's methods
 - `options.reducer`: (`Function` [optional]): [Model reducer](#model-reducer).
 - `options.typePrefix`: (`String` [optional]): Prefix of actions types. Default `@@redux-models`.
-- `options.modelsState`: (`Function` [optional]): Function to map state to model state. Default `state => state[{ model name }]`.
+- `options.modelState`: (`Function` [optional]): Function to map state to model state. Default `state => state[{ model name }]`.
 
 #### Returns
 

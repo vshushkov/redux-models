@@ -92,9 +92,13 @@ export function createActions({
         actions[methodName].mixinName = mixinName;
 
         actions[`${methodName}Reset`] = () => ({ type: reset });
+        actions[`${methodName}Modify`] = (...params) => (result) => ({
+          type: success,
+          payload: { params, result }
+        });
       } else {
         console.warn(
-          `redux-models: method${
+          `redux-models: (${modelName}) method${
             mixinName ? ` from mixin '${mixinName}'` : ''
           } with name '${methodName}' already defined${
             actions[methodName].mixinName

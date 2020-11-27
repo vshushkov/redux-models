@@ -495,6 +495,38 @@ describe('Model', () => {
     });
   });
 
+  it('tests modify method', async () => {
+    const responseError = new Error('wrong password');
+    const response = { token: '12345' };
+
+    const user = createModel({
+      name: 'user',
+      methods: {
+        login: ({ password }) => {
+          if (password === 'fail') {
+            return Promise.reject(responseError);
+          }
+
+          return Promise.resolve(response);
+        }
+      }
+    });
+
+    let state = {}
+    const store = mockStore();
+
+    const params = { password: '456' }
+    await store.dispatch(user.login(params))
+    store.getActions().forEach((action) => (state = user.reducer(state, action)))
+    expect(user({ user: state }).login(params)).toEqual(response)
+    store.clearActions();
+
+    const newResponse = { ok: true }
+    store.dispatch(user.loginModify(params)(newResponse));
+    store.getActions().forEach((action) => (state = user.reducer(state, action)))
+    expect(user({ user: state }).login(params)).toEqual(newResponse)
+  });
+
   it('model with mixins', async () => {
     const model = createModel({
       name: 'model',
